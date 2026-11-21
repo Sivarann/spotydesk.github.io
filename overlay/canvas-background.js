@@ -20,6 +20,13 @@
   let disposed = false;
   const cached = new Map();
   let settingEl = null;
+  let diagnostic = 'Waiting for playback information.';
+
+  function setDiagnostic(message) {
+    diagnostic = message;
+    const status = settingEl?.querySelector('[data-canvas-status]');
+    if (status) status.textContent = message;
+  }
 
   const prefEnabled = () => localStorage.getItem(LOCAL_PREFERENCE) !== 'false';
   const isPlayerVisible = () => !document.hidden && (!root || !root.dataset.currentView || root.dataset.currentView === 'player');
@@ -99,13 +106,17 @@
     background.querySelector('.player-background-shade')?.before(video);
     if (!video.parentNode) background.prepend(video);
     video.addEventListener('playing', () => {
-      if (canPlay() && activeSource && activeSource !== sourceBroken && root) root.dataset.spotydeskCanvas = 'active';
+      if (canPlay() && activeSource && activeSource !== sourceBroken && root) {
+        root.dataset.spotydeskCanvas = 'active';
+        setDiagnostic('Canvas video is playing in the background.');
+      }
     });
     video.addEventListener('error', () => {
       if (activeSource) {
         sourceBroken = activeSource;
         if (root) root.dataset.spotydeskCanvas = 'off';
         video.pause();
+        setDiagnostic('Video file could not play; the original artwork remains.');
       }
     });
     document.addEventListener('visibilitychange', updatePlayback);
@@ -123,7 +134,7 @@
     const check = settingEl.querySelector('input');
     if (check) check.checked = prefEnabled();
     if (status) status.textContent = config.endpoint
-      ? 'Automatic lookup configured. Missing videos or request failures use the original artwork.'
+      ? diagnostic
       : 'No Canvas API URL configured. Turntable keeps its normal artwork until you configure a server.';
   }
 
@@ -133,13 +144,19 @@
     if (!panel) return; // All original settings remain untouched even if selector changes upstream.
     settingEl = document.createElement('section');
     settingEl.className = 'spotydesk-canvas-settings';
-    settingEl.innerHTML = '<label><input type="checkbox" checked> Automatic Spotify Canvas backgrounds</label><p data-canvas-status></p>';
+    settingEl.innerHTML = '<label><input type="checkbox" checked> Automatic Spotify Canvas backgrounds</label><p data-canvas-status role="status" aria-live="polite"></p><button type="button" data-canvas-retry>Retry Canvas for this song</button>';
+    settingEl.querySelector('[data-canvas-retry]').addEventListener('click', () => {
+      if (activeUri) cached.delete(activeUri);
+      void syncTrack(currentTrack, currentPlaying, true);
+    });
     settingEl.querySelector('input').addEventListener('change', e => {
       localStorage.setItem(LOCAL_PREFERENCE, e.target.checked ? 'true' : 'false');
       if (!e.target.checked) {
         if (root) root.dataset.spotydeskCanvas = 'off';
         video?.pause();
+        setDiagnostic('Canvas turned off. Showing original artwork.');
       } else {
+        setDiagnostic('Canvas enabled. Checking the current song...');
         void syncTrack(currentTrack, currentPlaying, true);
       }
     });
@@ -159,13 +176,20 @@
       // Browsers can refuse media playback. Never block the original UI.
       sourceBroken = activeSource;
       if (root) root.dataset.spotydeskCanvas = 'off';
+      setDiagnostic('Android Chrome blocked autoplay. Tap Play in Turntable, then Retry Canvas.');
     });
   }
 
   async function getCanvas(uri, token) {
     await settingsReady;
-    if (!config.enabled || !config.endpoint || !prefEnabled()) return '';
-    if (cached.has(uri)) return cached.get(uri) || '';
+    if (!config.enabled || !config.endpoint || !prefEnabled()) {
+      setDiagnostic('Canvas is disabled or no API URL is configured.');
+      return '';
+    }
+    if (cached.has(uri)) {
+      setDiagnostic(cached.get(uri) ? 'Using cached Canvas video.' : 'No Canvas for this song (cached).');
+      return cached.get(uri) || '';
+    }
     abort?.abort();
     const controller = new AbortController();
     abort = controller;
@@ -177,15 +201,30 @@
         signal: controller.signal, credentials: 'omit', referrerPolicy: 'no-referrer',
         headers: { Accept: 'application/json' }, cache: 'no-store'
       });
-      if (!response.ok) return '';
+      if (!response.ok) {
+        setDiagnostic('Canvas API returned HTTP ' + response.status + '. Check the Vercel server.');
+        return '';
+      }
       const payload = await response.json();
       const canvases = payload?.data?.canvasesList;
-      if (token !== requestSerial || !Array.isArray(canvases)) return '';
-      const matching = canvases.find(c => c?.trackUri === uri) || canvases.find(c => !c?.trackUri);
-      const result = isSafeVideo(matching?.canvasUrl);
+      if (token !== requestSerial) return '';
+      if (!Array.isArray(canvases)) {
+        setDiagnostic('Canvas API response is missing data.canvasesList.');
+        return '';
+      }
+      // Spotify sometimes supplies a linked/alternate track URI. Prefer an exact match,
+      // but accept the first permitted Canvas video when the response is for this track ID.
+      const candidates = [...canvases.filter(c => c?.trackUri === uri), ...canvases.filter(c => c?.trackUri !== uri)];
+      const result = candidates.map(c => isSafeVideo(c?.canvasUrl)).find(Boolean) || '';
       cached.set(uri, result || null);
+      setDiagnostic(result ? 'Canvas video found; loading…' : 'No usable Canvas video returned for this song.');
       return result;
-    } catch {
+    } catch (error) {
+      if (token === requestSerial) {
+        setDiagnostic(error?.name === 'AbortError'
+          ? 'Canvas API timed out; showing original artwork.'
+          : 'Cannot read the Canvas API from Chrome (likely CORS or network). The API may work in a separate tab.');
+      }
       return ''; // CORS, timeout, token expiry and backend downtime all preserve artwork.
     } finally {
       clearTimeout(timer);
@@ -198,6 +237,7 @@
     const map = await mappingReady;
     if (token !== requestSerial || disposed) return;
     const local = isSafeVideo(map[uri] || map[uri.split(':').pop()] || currentTrack?.video_loop_url);
+    if (local) setDiagnostic('Local song video found; loading…');
     const candidate = local || await getCanvas(uri, token);
     if (token !== requestSerial || disposed || !video) return;
     if (!candidate) return;
@@ -221,7 +261,12 @@
       abort?.abort();
       activeUri = uri;
       if (video) clear();
-      if (uri && video) void resolveTrack(uri, requestSerial);
+      if (uri && video) {
+        setDiagnostic('Looking up Canvas for the current song…');
+        void resolveTrack(uri, requestSerial);
+      } else if (!uri) {
+        setDiagnostic('Waiting for a Spotify track to start playing.');
+      }
     } else {
       updatePlayback();
     }
