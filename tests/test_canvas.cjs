@@ -39,6 +39,9 @@ async function main() {
     if(url.includes('trackId=canvas123')) return {ok:true,json:async()=>({data:{canvasesList:[{
       trackUri:'spotify:track:canvas123',canvasUrl:'https://canvaz.scdn.co/playlist.cnvs.mp4'
     }]}})};
+    if(url.includes('trackId=flat222')) return {ok:true,json:async()=>({canvasesList:[{
+      trackUri:'spotify:track:flat222',canvasUrl:'https://canvaz.scdn.co/direct.cnvs.mp4'
+    }]})};
     if(url.includes('trackId=alias123')) return {ok:true,json:async()=>({data:{canvasesList:[{
       trackUri:'spotify:track:linked-alternate',canvasUrl:'https://canvaz.scdn.co/linked.cnvs.mp4'
     }]}})};
@@ -66,6 +69,11 @@ async function main() {
   assert.equal(video.playing,false);
   await controller.syncTrack({uri:'spotify:track:canvas123'},true);
   assert.equal(video.playing,true);
+  await controller.syncTrack({uri:'spotify:track:flat222'},true);
+  await settle();
+  assert.equal(video.src,'https://canvaz.scdn.co/direct.cnvs.mp4');
+  assert.equal(root.dataset.spotydeskCanvas,'active');
+  assert.equal(urls.filter(u=>u.includes('trackId=flat222')).length,1);
   await controller.syncTrack({uri:'spotify:track:local123'},true);
   await settle();
   assert.equal(video.src,'https://spotydesk.github.io/videos/local.mp4');
