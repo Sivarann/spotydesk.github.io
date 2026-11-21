@@ -59,7 +59,7 @@ const ASSETS = ["./index.html", "./settings-help.js", "./preset-controls.js", ".
             self.assertNotEqual(run.returncode, 0)
             self.assertIn('BUILD FAILED', run.stderr)
 
-    def test_no_backend_still_publishes_original_fallback(self):
+    def test_default_endpoint_builds_without_action_override(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             source = self.create_upstream(root)
@@ -68,7 +68,7 @@ const ASSETS = ["./index.html", "./settings-help.js", "./preset-controls.js", ".
             run = subprocess.run([sys.executable, str(BUILD), str(source), str(root / '_site')],
                                  capture_output=True, text=True, env=env)
             self.assertEqual(run.returncode, 0, run.stderr)
-            self.assertEqual(json.loads((root / '_site' / 'canvas-config.json').read_text())['endpoint'], '')
+            self.assertEqual(json.loads((root / '_site' / 'canvas-config.json').read_text())['endpoint'], json.loads((ROOT / 'overlay' / 'canvas-config.json').read_text())['endpoint'])
 
     def test_rejects_secret_url(self):
         with tempfile.TemporaryDirectory() as temp:
