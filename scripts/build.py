@@ -104,6 +104,24 @@ def build(src: Path, dst: Path):
     html_text = extend_csp(html_text, api_origin)
     index.write_text(html_text, encoding='utf-8')
 
+    # Both upstream manifests must stay scoped to this GitHub Pages project URL.
+    # index.html uses manifest.json, which includes a UTF-8 BOM upstream.
+    for manifest_name in ('manifest.webmanifest', 'manifest.json'):
+        manifest = dst / manifest_name
+        if not manifest.exists():
+            continue
+        try:
+            manifest_data = json.loads(manifest.read_text(encoding='utf-8-sig'))
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f'Turntable {manifest_name} is not valid JSON') from exc
+        if not isinstance(manifest_data, dict):
+            raise RuntimeError(f'Turntable {manifest_name} must contain a JSON object')
+        manifest_data['start_url'] = './'
+        manifest_data['scope'] = './'
+        manifest_data['name'] = 'SpotyDesk Turntable'
+        manifest_data['short_name'] = 'SpotyDesk'
+        manifest.write_text(json.dumps(manifest_data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
     bridge = dst / 'bridge.js'
     js = bridge.read_text(encoding='utf-8')
     if 'canvas-background.js' not in js:
