@@ -12,12 +12,13 @@ async function main() {
   const settings = {children:[],append(c){this.children.push(c);}};
   const input = {checked:true, addEventListener(type, callback){this.change=callback}};
   const status = {textContent:''};
+  const retry = {addEventListener(type, callback){this.click=callback}};
   const document = {
     readyState:'complete', hidden:false,
     getElementById:id=>id==='remote'?root:null,
     querySelector:sel=>sel.includes('player-background')?background:sel.includes('settings')?settings:null,
     createElement(tag){ if(tag==='video')return video; return {
-      className:'',innerHTML:'',querySelector:s=>s==='input'?input:status
+      className:'',innerHTML:'',querySelector:s=>s==='input'?input:s==='[data-canvas-retry]'?retry:status
     }; },
     addEventListener:(name,cb)=>listeners.set(name,cb)
   };
@@ -37,6 +38,9 @@ async function main() {
     if(url.endsWith('/video-loops.json')) return {ok:true,json:async()=>({'spotify:track:local123':'./videos/local.mp4'})};
     if(url.includes('trackId=canvas123')) return {ok:true,json:async()=>({data:{canvasesList:[{
       trackUri:'spotify:track:canvas123',canvasUrl:'https://canvaz.scdn.co/playlist.cnvs.mp4'
+    }]}})};
+    if(url.includes('trackId=alias123')) return {ok:true,json:async()=>({data:{canvasesList:[{
+      trackUri:'spotify:track:linked-alternate',canvasUrl:'https://canvaz.scdn.co/linked.cnvs.mp4'
     }]}})};
     if(url.includes('trackId=missing456')) return {ok:true,json:async()=>({data:{canvasesList:[]}})};
     if(url.includes('trackId=error999')) throw Error('network error');
@@ -65,6 +69,10 @@ async function main() {
   await settle();
   assert.equal(video.src,'https://spotydesk.github.io/videos/local.mp4');
   assert.equal(urls.filter(u=>u.includes('trackId=local123')).length,0);
+  await controller.syncTrack({uri:'spotify:track:alias123'},true);
+  await settle();
+  assert.equal(video.src,'https://canvaz.scdn.co/linked.cnvs.mp4');
+  assert.equal(root.dataset.spotydeskCanvas,'active');
   await controller.syncTrack({uri:'spotify:track:missing456'},true);
   await settle();
   assert.equal(root.dataset.spotydeskCanvas,'off');
@@ -72,6 +80,8 @@ async function main() {
   await controller.syncTrack({uri:'spotify:track:error999'},true);
   await settle();
   assert.equal(root.dataset.spotydeskCanvas,'off');
+  assert.match(status.textContent, /CORS or network/);
+  assert.equal(typeof retry.click, 'function');
   await controller.syncTrack({uri:'spotify:track:canvas123'},true);
   await settle();
   assert.equal(root.dataset.spotydeskCanvas,'active');
