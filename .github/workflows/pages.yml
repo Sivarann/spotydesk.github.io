@@ -28,52 +28,16 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_build.py'
           node tests/test_canvas.cjs
 
-      - name: Check Canvas API availability and browser CORS (non-blocking)
+      - name: Check Canvas API browser CORS (non-blocking)
         shell: bash
         run: |
           headers=$(mktemp)
           status=$(curl -sS -L --max-time 25 -o /dev/null -D "$headers" -w '%{http_code}' -H 'Origin: https://sivarann.github.io' 'https://spot-omega-sandy.vercel.app/api/canvas?trackId=3OHfY25tqY28d16oZczHc8') || status=network-error
           echo "Canvas endpoint HTTP status: $status"
-          if grep -Eiq '^access-control-allow-origin:[[:space:]]*https://sivarann\\.github\\.io[[:space:]]*        shell: bash
-        run: |
-          set -euo pipefail
-          git clone --depth 1 https://github.com/peekabu411/peekabu411.github.io.git original-turntable
-
-      - name: Build complete Android-compatible website
-        env:
-          CANVAS_API_URL: ${{ vars.CANVAS_API_URL }}
-        run: python3 scripts/build.py original-turntable _site
-
-      - name: Verify real website exists
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s _site/index.html
-          test -s _site/app.js
-          test -s _site/bridge.js
-          test -s _site/canvas-background.js
-          test -s _site/manifest.json
-          test -s _site/sw.js
-          echo 'Built SpotyDesk with full original Turntable'
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload website
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-      - name: Allow uploaded Pages artifact to become available
-        run: sleep 15
-
-      - name: Publish website
-        id: deployment
-        uses: actions/deploy-pages@v4
- "$headers"; then
-            echo "Canvas cross-origin header is present for SpotyDesk."
+          if grep -Fi 'access-control-allow-origin:' "$headers" | grep -Fqi 'https://sivarann.github.io'; then
+            echo 'Canvas API sends the required CORS origin for SpotyDesk.'
           else
-            echo "::warning::Canvas API does not return Access-Control-Allow-Origin: https://sivarann.github.io; Android Chrome will block cross-origin Canvas data even if JSON is visible in a separate browser tab."
+            echo '::warning::Canvas API has no CORS header for SpotyDesk. Chrome may block video lookup even if the API shows JSON in a separate tab.'
           fi
 
       - name: Download all files from original Turntable
