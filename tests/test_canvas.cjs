@@ -34,7 +34,7 @@ async function main() {
   const urls=[];
   const fetch = async (input)=>{
     const url=String(input);urls.push(url);
-    if(url.endsWith('/canvas-config.json')) return {ok:true,json:async()=>({endpoint:'https://canvas.example/api/canvas'})};
+    if(url.includes('/canvas-config.json')) return {ok:true,json:async()=>({endpoint:''})}; // stale settings must fall back to embedded API
     if(url.endsWith('/video-loops.json')) return {ok:true,json:async()=>({'spotify:track:local123':'./videos/local.mp4'})};
     if(url.includes('trackId=canvas123')) return {ok:true,json:async()=>({data:{canvasesList:[{
       trackUri:'spotify:track:canvas123',canvasUrl:'https://canvaz.scdn.co/playlist.cnvs.mp4'
@@ -61,6 +61,7 @@ async function main() {
   assert.equal(root.dataset.spotydeskCanvas,'active');
   assert.equal(video.muted,true);
   assert.equal(urls.filter(u=>u.includes('trackId=canvas123')).length,1);
+  assert.ok(urls.some(u=>u.startsWith('https://spot-omega-sandy.vercel.app/api/canvas?trackId=canvas123')), 'blank JSON config should use bundled endpoint');
   await controller.syncTrack({uri:'spotify:track:canvas123'},false);
   assert.equal(video.playing,false);
   await controller.syncTrack({uri:'spotify:track:canvas123'},true);
@@ -91,6 +92,10 @@ async function main() {
   input.change({target:{checked:false}});
   assert.equal(storage.get('spotydesk.canvas.enabled.v1'),'false');
   assert.equal(root.dataset.spotydeskCanvas,'off');
+  retry.click();
+  await settle();
+  assert.equal(storage.get('spotydesk.canvas.enabled.v1'),'true');
+  assert.equal(root.dataset.spotydeskCanvas,'active');
   controller.dispose();
   console.log('PASS: Canvas lookup, local priority, no video fallback, media errors, pause/resume, preference, cleanup');
 }
