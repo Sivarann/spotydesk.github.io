@@ -95,13 +95,24 @@ def build(src: Path, dst: Path):
 
     for filename in ('canvas-background.js', 'canvas-background.css', 'video-loops.json'):
         shutil.copy2(OVERLAY / filename, dst / filename)
+
+    # Embed the public Canvas endpoint directly in the script. A cached or missing
+    # JSON config must not disable Canvas on Android PWA installations.
+    canvas_js = dst / 'canvas-background.js'
+    canvas_source = canvas_js.read_text(encoding='utf-8')
+    canvas_source = replace_once(
+        canvas_source,
+        r'(?m)^  const DEFAULT_CANVAS_ENDPOINT = ["\\x27][^"\\x27]*["\\x27];',
+        '  const DEFAULT_CANVAS_ENDPOINT = ' + json.dumps(cfg['endpoint']) + ';',
+        'canvas-background.js')
+    canvas_js.write_text(canvas_source, encoding='utf-8')
     if (OVERLAY / 'videos').is_dir():
         shutil.copytree(OVERLAY / 'videos', dst / 'videos', dirs_exist_ok=True)
 
     index = dst / 'index.html'
     html_text = index.read_text(encoding='utf-8')
     if 'canvas-background.css' not in html_text:
-        html_text = replace_once(html_text, r'</head>', '<link rel="stylesheet" href="./canvas-background.css?v=2">\n</head>', 'index.html', flags=re.I)
+        html_text = replace_once(html_text, r'</head>', '<link rel="stylesheet" href="./canvas-background.css?v=4">\n</head>', 'index.html', flags=re.I)
     # Redirect instructions and hardcoded redirect URLs must point at this fork's domain.
     html_text = html_text.replace(UPSTREAM_ADDRESS, USER_ADDRESS)
     html_text = extend_csp(html_text, api_origin)
@@ -130,7 +141,7 @@ def build(src: Path, dst: Path):
     if 'canvas-background.js' not in js:
         js = replace_once(js,
             r'await\s+load\(\s*["\']\./app\.js(?:\?[^"\']*)?["\']\s*\)\s*;',
-            lambda m: 'await load("./canvas-background.js?v=2");\n' + m.group(0),
+            lambda m: 'await load("./canvas-background.js?v=4");\n' + m.group(0),
             'bridge.js')
     bridge.write_text(js, encoding='utf-8')
 
@@ -154,7 +165,7 @@ def build(src: Path, dst: Path):
                 lambda m: m.group(1) + ',\n  "./canvas-background.js", "./canvas-background.css", "./canvas-config.json", "./video-loops.json"',
                 'sw.js')
         text = re.sub(r'(?m)(\bconst\s+CACHE\s*=\s*)(["\'])(.*?)(["\'])\s*;',
-                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-canvas-v3{m.group(2)};',
+                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-canvas-v4{m.group(2)};',
                       text, count=1)
         sw.write_text(text, encoding='utf-8')
 
