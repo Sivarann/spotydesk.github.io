@@ -1,0 +1,64 @@
+name: Deploy full Turntable with SpotyDesk Canvas
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout SpotyDesk integration
+        uses: actions/checkout@v4
+
+      - name: Verify integration tests
+        run: |
+          python3 -m unittest discover -s tests -p 'test_build.py'
+          node tests/test_canvas.cjs
+
+      - name: Download all files from original Turntable
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/peekabu411/peekabu411.github.io.git original-turntable
+
+      - name: Build complete Android-compatible website
+        env:
+          CANVAS_API_URL: ${{ vars.CANVAS_API_URL }}
+        run: python3 scripts/build.py original-turntable _site
+
+      - name: Verify real website exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s _site/index.html
+          test -s _site/app.js
+          test -s _site/bridge.js
+          test -s _site/canvas-background.js
+          test -s _site/manifest.json
+          test -s _site/sw.js
+          echo 'Built SpotyDesk with full original Turntable'
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4
