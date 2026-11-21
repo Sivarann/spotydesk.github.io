@@ -23,7 +23,7 @@ function render(track, playback, remote) {
   console.log("all original playback logic remains");
 }''')
         (source / 'sw.js').write_text('''const CACHE = "turntable-ios-i98-viewport-resume";
-const ASSETS = ["./index.html", "./bridge.js?v=I.9.8-viewport-resume", "./settings-help.js", "./preset-controls.js", "./manifest.webmanifest"];
+const ASSETS = ["./index.html", "./bridge.js?v=I.9.8-viewport-resume", "./app.js?v=I.9.8-viewport-resume", "./settings-help.js", "./preset-controls.js", "./manifest.webmanifest"];
 ''')
         (source / 'original-extra-feature.js').write_text('original queues and lyrics unaffected')
         (source / 'LICENSE').write_text('Preserve original author licence here')
