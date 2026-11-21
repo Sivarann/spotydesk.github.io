@@ -102,7 +102,89 @@ def build(src: Path, dst: Path):
     canvas_source = canvas_js.read_text(encoding='utf-8')
     canvas_source = replace_once(
         canvas_source,
-        r'(?m)^  const DEFAULT_CANVAS_ENDPOINT = ["\\x27][^"\\x27]*["\\x27];',
+        r'(?m)^  const DEFAULT_CANVAS_ENDPOINT = .*?;,
+        '  const DEFAULT_CANVAS_ENDPOINT = ' + json.dumps(cfg['endpoint']) + ';',
+        'canvas-background.js')
+    canvas_js.write_text(canvas_source, encoding='utf-8')
+    if (OVERLAY / 'videos').is_dir():
+        shutil.copytree(OVERLAY / 'videos', dst / 'videos', dirs_exist_ok=True)
+
+    index = dst / 'index.html'
+    html_text = index.read_text(encoding='utf-8')
+    if 'canvas-background.css' not in html_text:
+        html_text = replace_once(html_text, r'</head>', '<link rel="stylesheet" href="./canvas-background.css?v=4">\n</head>', 'index.html', flags=re.I)
+    # Redirect instructions and hardcoded redirect URLs must point at this fork's domain.
+    html_text = html_text.replace(UPSTREAM_ADDRESS, USER_ADDRESS)
+    html_text = extend_csp(html_text, api_origin)
+    index.write_text(html_text, encoding='utf-8')
+
+    # Both upstream manifests must stay scoped to this GitHub Pages project URL.
+    # index.html uses manifest.json, which includes a UTF-8 BOM upstream.
+    for manifest_name in ('manifest.webmanifest', 'manifest.json'):
+        manifest = dst / manifest_name
+        if not manifest.exists():
+            continue
+        try:
+            manifest_data = json.loads(manifest.read_text(encoding='utf-8-sig'))
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f'Turntable {manifest_name} is not valid JSON') from exc
+        if not isinstance(manifest_data, dict):
+            raise RuntimeError(f'Turntable {manifest_name} must contain a JSON object')
+        manifest_data['start_url'] = './'
+        manifest_data['scope'] = './'
+        manifest_data['name'] = 'SpotyDesk Turntable'
+        manifest_data['short_name'] = 'SpotyDesk'
+        manifest.write_text(json.dumps(manifest_data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+    bridge = dst / 'bridge.js'
+    js = bridge.read_text(encoding='utf-8')
+    if 'canvas-background.js' not in js:
+        js = replace_once(js,
+            r'await\s+load\(\s*["\']\./app\.js(?:\?[^"\']*)?["\']\s*\)\s*;',
+            lambda m: 'await load("./canvas-background.js?v=4");\n' + m.group(0),
+            'bridge.js')
+    bridge.write_text(js, encoding='utf-8')
+
+    app = dst / 'app.js'
+    js = app.read_text(encoding='utf-8')
+    if 'turntableCanvasBackground?.syncTrack(' not in js:
+        js = replace_once(js,
+            r'(?m)^(?P<indent>[ \t]*)remote\.classList\.toggle\(\s*["\']is-playing["\']\s*,\s*!!playback\?\.is_playing\s*\);',
+            lambda m: m.group(0) + '\n' + m.group('indent') + 'window.turntableCanvasBackground?.syncTrack(track, !!playback?.is_playing);',
+            'app.js')
+    # Replace hardcoded redirect strings if any, not original GitHub project credits.
+    js = js.replace(UPSTREAM_ADDRESS, USER_ADDRESS)
+    app.write_text(js, encoding='utf-8')
+
+    sw = dst / 'sw.js'
+    if sw.exists():
+        text = sw.read_text(encoding='utf-8')
+        if 'canvas-background.js' not in text:
+            text = replace_once(text,
+                r'(["\']\./manifest\.webmanifest["\'])',
+                lambda m: m.group(1) + ',\n  "./canvas-background.js", "./canvas-background.css", "./canvas-config.json", "./video-loops.json"',
+                'sw.js')
+        text = re.sub(r'(?m)(\bconst\s+CACHE\s*=\s*)(["\'])(.*?)(["\'])\s*;',
+                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-canvas-v4{m.group(2)};',
+                      text, count=1)
+        sw.write_text(text, encoding='utf-8')
+
+    # Built Pages deployments do not need Jekyll processing.
+    (dst / '.nojekyll').touch()
+    # No special branding replacement: all upstream artwork, lyrics, playlists,
+    # originals, licensing, attribution and styling stay in place.
+    print(f'OK: original repository copied to {dst} with Canvas background integration')
+    print('Canvas API:', cfg['endpoint'] or '(not configured; original artwork used)')
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        sys.exit('Usage: python scripts/build.py path/to/original-turntable path/to/site-output')
+    try:
+        build(Path(sys.argv[1]), Path(sys.argv[2]))
+    except Exception as e:
+        sys.exit(f'BUILD FAILED: {e}')
+,
         '  const DEFAULT_CANVAS_ENDPOINT = ' + json.dumps(cfg['endpoint']) + ';',
         'canvas-background.js')
     canvas_js.write_text(canvas_source, encoding='utf-8')
