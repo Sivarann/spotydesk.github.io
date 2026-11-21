@@ -61,6 +61,14 @@ jobs:
           test -s _site/canvas-background.js
           test -s _site/manifest.json
           test -s _site/sw.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          endpoint = json.loads(Path('_site/canvas-config.json').read_text())['endpoint']
+          assert endpoint == 'https://spot-omega-sandy.vercel.app/api/canvas', f'Wrong or missing Canvas endpoint: {endpoint!r}'
+          assert 'https://spot-omega-sandy.vercel.app' in Path('_site/index.html').read_text(), 'API domain missing from CSP'
+          print('Verified deployed Canvas endpoint:', endpoint)
+          PY
           echo 'Built SpotyDesk with full original Turntable'
 
       - name: Configure GitHub Pages
