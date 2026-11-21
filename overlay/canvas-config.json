@@ -1,5 +1,5 @@
 {
-  "endpoint": "",
+  "endpoint": "https://spot-omega-sandy.vercel.app/api/canvas",
   "enabled": true,
   "timeoutMs": 8000
 }
