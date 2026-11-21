@@ -226,10 +226,15 @@
         return '';
       }
       const payload = await response.json();
-      const canvases = payload?.data?.canvasesList;
+      // The upstream API sends CanvasResponse.toObject() directly:
+      // { canvasesList: [...] }. Some deployments wrap it as { data: { canvasesList: [...] } }.
+      // Support both formats without accepting arbitrary untrusted payloads.
+      const canvases = Array.isArray(payload?.canvasesList)
+        ? payload.canvasesList
+        : Array.isArray(payload?.data?.canvasesList) ? payload.data.canvasesList : null;
       if (token !== requestSerial) return '';
-      if (!Array.isArray(canvases)) {
-        setDiagnostic('Canvas API response is missing data.canvasesList.');
+      if (!canvases) {
+        setDiagnostic('Canvas API returned an unexpected response format. Expected canvasesList.');
         return '';
       }
       // Spotify sometimes supplies a linked/alternate track URI. Prefer an exact match,
