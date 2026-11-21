@@ -46,7 +46,7 @@ const ASSETS = ["./index.html", "./settings-help.js", "./preset-controls.js", ".
             self.assertNotIn('https://peekabu411.github.io/', (dest / 'index.html').read_text())
             self.assertIn('https://canvas.example.org', (dest / 'index.html').read_text())
             self.assertIn('https://canvaz.scdn.co', (dest / 'index.html').read_text())
-            self.assertIn('spotydesk-canvas-v2', (dest / 'sw.js').read_text())
+            self.assertIn('spotydesk-canvas-v3', (dest / 'sw.js').read_text())
             self.assertIn('canvas-config.json', (dest / 'sw.js').read_text())
             self.assertEqual(json.loads((dest / 'canvas-config.json').read_text())['endpoint'], 'https://canvas.example.org/api/canvas')
             self.assertTrue((dest / '.nojekyll').exists())
@@ -69,6 +69,20 @@ const ASSETS = ["./index.html", "./settings-help.js", "./preset-controls.js", ".
                                  capture_output=True, text=True, env=env)
             self.assertEqual(run.returncode, 0, run.stderr)
             self.assertEqual(json.loads((root / '_site' / 'canvas-config.json').read_text())['endpoint'], json.loads((ROOT / 'overlay' / 'canvas-config.json').read_text())['endpoint'])
+
+    def test_blank_actions_variable_uses_configured_canvas_endpoint(self):
+        # GitHub Actions sends an empty string when vars.CANVAS_API_URL is unset.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = self.create_upstream(root)
+            env = dict(os.environ, CANVAS_API_URL='')
+            run = subprocess.run([sys.executable, str(BUILD), str(source), str(root / '_site')],
+                                 capture_output=True, text=True, env=env)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            expected = json.loads((ROOT / 'overlay' / 'canvas-config.json').read_text())['endpoint']
+            self.assertTrue(expected, 'Repository must have a default Canvas API endpoint')
+            self.assertEqual(json.loads((root / '_site' / 'canvas-config.json').read_text())['endpoint'], expected)
+            self.assertIn('https://spot-omega-sandy.vercel.app', (root / '_site' / 'index.html').read_text())
 
     def test_rejects_secret_url(self):
         with tempfile.TemporaryDirectory() as temp:
