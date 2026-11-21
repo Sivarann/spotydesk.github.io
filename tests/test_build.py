@@ -46,7 +46,7 @@ const ASSETS = ["./index.html", "./settings-help.js", "./preset-controls.js", ".
             self.assertNotIn('https://peekabu411.github.io/', (dest / 'index.html').read_text())
             self.assertIn('https://canvas.example.org', (dest / 'index.html').read_text())
             self.assertIn('https://canvaz.scdn.co', (dest / 'index.html').read_text())
-            self.assertIn('spotydesk-canvas-v4', (dest / 'sw.js').read_text())
+            self.assertIn('spotydesk-canvas-v5', (dest / 'sw.js').read_text())
             self.assertIn('canvas-config.json', (dest / 'sw.js').read_text())
             self.assertEqual(json.loads((dest / 'canvas-config.json').read_text())['endpoint'], 'https://canvas.example.org/api/canvas')
             self.assertIn('const DEFAULT_CANVAS_ENDPOINT = "https://canvas.example.org/api/canvas";', (dest / 'canvas-background.js').read_text())
