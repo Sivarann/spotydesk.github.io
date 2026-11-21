@@ -112,7 +112,7 @@ def build(src: Path, dst: Path):
     index = dst / 'index.html'
     html_text = index.read_text(encoding='utf-8')
     if 'canvas-background.css' not in html_text:
-        html_text = replace_once(html_text, r'</head>', '<link rel="stylesheet" href="./canvas-background.css?v=6">\n</head>', 'index.html', flags=re.I)
+        html_text = replace_once(html_text, r'</head>', '<link rel="stylesheet" href="./canvas-background.css?v=7">\n</head>', 'index.html', flags=re.I)
     # Redirect instructions and hardcoded redirect URLs must point at this fork's domain.
     html_text = html_text.replace(UPSTREAM_ADDRESS, USER_ADDRESS)
     html_text = extend_csp(html_text, api_origin)
@@ -121,7 +121,7 @@ def build(src: Path, dst: Path):
     html_text = replace_once(
         html_text,
         r'(<script\s+src="\./bridge\.js)(?:\?[^"]*)?("\s*></script>)',
-        lambda m: m.group(1) + '?v=spotydesk-canvas-v6' + m.group(2),
+        lambda m: m.group(1) + '?v=spotydesk-fast-sync-v7' + m.group(2),
         'index.html')
     index.write_text(html_text, encoding='utf-8')
 
@@ -148,8 +148,11 @@ def build(src: Path, dst: Path):
     if 'canvas-background.js' not in js:
         js = replace_once(js,
             r'await\s+load\(\s*["\']\./app\.js(?:\?[^"\']*)?["\']\s*\)\s*;',
-            lambda m: 'await load("./canvas-background.js?v=6");\n' + m.group(0),
+            lambda m: 'await load("./canvas-background.js?v=7");\n' + m.group(0),
             'bridge.js')
+    js = replace_once(js,
+        r'await\s+load\(\s*["\x27]\./app\.js(?:\?[^"\x27]*)?["\x27]\s*\)\s*;',
+        'await load("./app.js?v=spotydesk-fast-sync-v7");', 'bridge.js')
     bridge.write_text(js, encoding='utf-8')
 
     app = dst / 'app.js'
@@ -159,6 +162,79 @@ def build(src: Path, dst: Path):
             r'(?m)^(?P<indent>[ \t]*)remote\.classList\.toggle\(\s*["\']is-playing["\']\s*,\s*!!playback\?\.is_playing\s*\);',
             lambda m: m.group(0) + '\n' + m.group('indent') + 'window.turntableCanvasBackground?.syncTrack(track, !!playback?.is_playing);',
             'app.js')
+    # Faster foreground polling for songs skipped on another Spotify device.
+    # The upstream 429 cooldown logic remains intact.
+    js = replace_once(js, r'(?m)^const ACTIVE_STATUS_REFRESH_MS = 7_500;
+    js = js.replace(UPSTREAM_ADDRESS, USER_ADDRESS)
+    app.write_text(js, encoding='utf-8')
+
+    sw = dst / 'sw.js'
+    if sw.exists():
+        text = sw.read_text(encoding='utf-8')
+        text = text.replace('./bridge.js?v=I.9.8-viewport-resume', './bridge.js?v=spotydesk-fast-sync-v7')
+        text = replace_once(text, r'\./app\.js(?:\?[^"\x27]*)?', './app.js?v=spotydesk-fast-sync-v7', 'sw.js')
+        if 'canvas-background.js' not in text:
+            text = replace_once(text,
+                r'(["\']\./manifest\.webmanifest["\'])',
+                lambda m: m.group(1) + ',\n  "./canvas-background.js", "./canvas-background.css", "./canvas-config.json", "./video-loops.json"',
+                'sw.js')
+        text = re.sub(r'(?m)(\bconst\s+CACHE\s*=\s*)(["\'])(.*?)(["\'])\s*;',
+                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-fast-sync-v7{m.group(2)};',
+                      text, count=1)
+        sw.write_text(text, encoding='utf-8')
+
+    # Built Pages deployments do not need Jekyll processing.
+    (dst / '.nojekyll').touch()
+    # No special branding replacement: all upstream artwork, lyrics, playlists,
+    # originals, licensing, attribution and styling stay in place.
+    print(f'OK: original repository copied to {dst} with Canvas background integration')
+    print('Canvas API:', cfg['endpoint'] or '(not configured; original artwork used)')
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        sys.exit('Usage: python scripts/build.py path/to/original-turntable path/to/site-output')
+    try:
+        build(Path(sys.argv[1]), Path(sys.argv[2]))
+    except Exception as e:
+        sys.exit(f'BUILD FAILED: {e}')
+,
+                      'const ACTIVE_STATUS_REFRESH_MS = 3_000;', 'app.js')
+    js = replace_once(js, r'(?m)^const IDLE_STATUS_REFRESH_MS = 15_000;
+    js = js.replace(UPSTREAM_ADDRESS, USER_ADDRESS)
+    app.write_text(js, encoding='utf-8')
+
+    sw = dst / 'sw.js'
+    if sw.exists():
+        text = sw.read_text(encoding='utf-8')
+        text = text.replace('./bridge.js?v=I.9.8-viewport-resume', './bridge.js?v=spotydesk-fast-sync-v7')
+        if 'canvas-background.js' not in text:
+            text = replace_once(text,
+                r'(["\']\./manifest\.webmanifest["\'])',
+                lambda m: m.group(1) + ',\n  "./canvas-background.js", "./canvas-background.css", "./canvas-config.json", "./video-loops.json"',
+                'sw.js')
+        text = re.sub(r'(?m)(\bconst\s+CACHE\s*=\s*)(["\'])(.*?)(["\'])\s*;',
+                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-fast-sync-v7{m.group(2)};',
+                      text, count=1)
+        sw.write_text(text, encoding='utf-8')
+
+    # Built Pages deployments do not need Jekyll processing.
+    (dst / '.nojekyll').touch()
+    # No special branding replacement: all upstream artwork, lyrics, playlists,
+    # originals, licensing, attribution and styling stay in place.
+    print(f'OK: original repository copied to {dst} with Canvas background integration')
+    print('Canvas API:', cfg['endpoint'] or '(not configured; original artwork used)')
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        sys.exit('Usage: python scripts/build.py path/to/original-turntable path/to/site-output')
+    try:
+        build(Path(sys.argv[1]), Path(sys.argv[2]))
+    except Exception as e:
+        sys.exit(f'BUILD FAILED: {e}')
+,
+                      'const IDLE_STATUS_REFRESH_MS = 6_000;', 'app.js')
     # Replace hardcoded redirect strings if any, not original GitHub project credits.
     js = js.replace(UPSTREAM_ADDRESS, USER_ADDRESS)
     app.write_text(js, encoding='utf-8')
@@ -166,14 +242,14 @@ def build(src: Path, dst: Path):
     sw = dst / 'sw.js'
     if sw.exists():
         text = sw.read_text(encoding='utf-8')
-        text = text.replace('./bridge.js?v=I.9.8-viewport-resume', './bridge.js?v=spotydesk-canvas-v6')
+        text = text.replace('./bridge.js?v=I.9.8-viewport-resume', './bridge.js?v=spotydesk-fast-sync-v7')
         if 'canvas-background.js' not in text:
             text = replace_once(text,
                 r'(["\']\./manifest\.webmanifest["\'])',
                 lambda m: m.group(1) + ',\n  "./canvas-background.js", "./canvas-background.css", "./canvas-config.json", "./video-loops.json"',
                 'sw.js')
         text = re.sub(r'(?m)(\bconst\s+CACHE\s*=\s*)(["\'])(.*?)(["\'])\s*;',
-                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-canvas-v6{m.group(2)};',
+                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-fast-sync-v7{m.group(2)};',
                       text, count=1)
         sw.write_text(text, encoding='utf-8')
 
