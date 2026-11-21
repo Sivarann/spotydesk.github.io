@@ -14,14 +14,14 @@ class BuildTests(unittest.TestCase):
     def create_upstream(self, directory, bad=False):
         source = directory / 'original'
         source.mkdir()
-        (source / 'index.html').write_text('''<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://api.spotify.com; media-src 'self'"></head><body><div id="remote" class="device" data-current-view="player"><div data-panel="player"><div class="player-background"><div class="player-background-shade"></div></div></div><div data-panel="settings"></div></div><p>https://peekabu411.github.io/</p></body></html>''')
+        (source / 'index.html').write_text('''<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://api.spotify.com; media-src 'self'"></head><body><div id="remote" class="device" data-current-view="player"><div data-panel="player"><div class="player-background"><div class="player-background-shade"></div></div></div><div data-panel="settings"></div></div><p>https://peekabu411.github.io/</p><script src="./bridge.js?v=I.9.8-viewport-resume"></script></body></html>''')
         (source / 'bridge.js').write_text('async function load(file){}\nawait load("./app.js?v=I.9.8-viewport-resume");\n')
         (source / 'app.js').write_text('''function render(track, playback, remote) {
   remote.classList.toggle("is-playing", !!playback?.is_playing);
   console.log("all original playback logic remains");
 }''')
         (source / 'sw.js').write_text('''const CACHE = "turntable-ios-i98-viewport-resume";
-const ASSETS = ["./index.html", "./settings-help.js", "./preset-controls.js", "./manifest.webmanifest"];
+const ASSETS = ["./index.html", "./bridge.js?v=I.9.8-viewport-resume", "./settings-help.js", "./preset-controls.js", "./manifest.webmanifest"];
 ''')
         (source / 'original-extra-feature.js').write_text('original queues and lyrics unaffected')
         (source / 'LICENSE').write_text('Preserve original author licence here')
