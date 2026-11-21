@@ -39,3 +39,15 @@
 @media (prefers-reduced-motion: reduce) {
   .player-background > .spotydesk-canvas-video { transition: none; }
 }
+
+.spotydesk-canvas-settings [data-canvas-retry] {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,.14);
+  color: inherit;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.spotydesk-canvas-settings [data-canvas-retry]:focus-visible { outline: 2px solid #1ed760; }
