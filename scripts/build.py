@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 
 BASE = Path(__file__).resolve().parents[1]
 OVERLAY = BASE / 'overlay'
-USER_ADDRESS = 'https://spotydesk.github.io/'
+USER_ADDRESS = 'https://sivarann.github.io/'
 UPSTREAM_ADDRESS = 'https://peekabu411.github.io/'
 
 
