@@ -40,6 +40,30 @@ jobs:
             echo '::warning::Canvas API has no CORS header for SpotyDesk. Chrome may block video lookup even if the API shows JSON in a separate tab.'
           fi
 
+      - name: Inspect public Canvas API JSON shape (non-blocking)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import urllib.request
+          url = 'https://spot-omega-sandy.vercel.app/api/canvas?trackId=3OHfY25tqY28d16oZczHc8'
+          try:
+              req = urllib.request.Request(url, headers={'Origin':'https://sivarann.github.io', 'Accept':'application/json'})
+              with urllib.request.urlopen(req, timeout=22) as response:
+                  data = json.load(response)
+              if isinstance(data, dict):
+                  print('Canvas API top-level keys:', ', '.join(sorted(data.keys())))
+                  rows = data.get('canvasesList')
+                  if not isinstance(rows, list) and isinstance(data.get('data'), dict):
+                      rows = data['data'].get('canvasesList')
+                  print('Canvas API canvasesList found:', isinstance(rows, list))
+                  print('Canvas API canvas count:', len(rows) if isinstance(rows, list) else 'unknown')
+              else:
+                  print('Canvas API response type:', type(data).__name__)
+          except Exception as exc:
+              print('Canvas JSON diagnostic unavailable:', type(exc).__name__)
+          PY
+
       - name: Download all files from original Turntable
         shell: bash
         run: |
