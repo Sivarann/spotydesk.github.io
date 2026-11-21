@@ -83,7 +83,10 @@ def build(src: Path, dst: Path):
     shutil.copytree(src, dst, ignore=shutil.ignore_patterns('.git', 'node_modules', '__pycache__', '*.pyc'))
 
     cfg = json.loads((OVERLAY / 'canvas-config.json').read_text(encoding='utf-8'))
-    cfg['endpoint'] = acceptable_api_url(os.environ.get('CANVAS_API_URL', cfg.get('endpoint', '') or ''))
+    # GitHub Actions exports missing repository variables as empty strings.
+    # Empty override must not erase the valid checked-in endpoint.
+    configured_url = (os.environ.get('CANVAS_API_URL') or '').strip() or cfg.get('endpoint', '') or ''
+    cfg['endpoint'] = acceptable_api_url(configured_url)
     api_origin = ''
     if cfg['endpoint']:
         u = urlparse(cfg['endpoint'])
@@ -151,7 +154,7 @@ def build(src: Path, dst: Path):
                 lambda m: m.group(1) + ',\n  "./canvas-background.js", "./canvas-background.css", "./canvas-config.json", "./video-loops.json"',
                 'sw.js')
         text = re.sub(r'(?m)(\bconst\s+CACHE\s*=\s*)(["\'])(.*?)(["\'])\s*;',
-                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-canvas-v2{m.group(2)};',
+                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-canvas-v3{m.group(2)};',
                       text, count=1)
         sw.write_text(text, encoding='utf-8')
 
