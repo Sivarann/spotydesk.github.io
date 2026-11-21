@@ -102,7 +102,8 @@ def build(src: Path, dst: Path):
     canvas_source = canvas_js.read_text(encoding='utf-8')
     canvas_source = replace_once(
         canvas_source,
-        r'(?m)^  const DEFAULT_CANVAS_ENDPOINT = .*?;        '  const DEFAULT_CANVAS_ENDPOINT = ' + json.dumps(cfg['endpoint']) + ';',
+        r'(?m)^  const DEFAULT_CANVAS_ENDPOINT = .*?;$',
+        '  const DEFAULT_CANVAS_ENDPOINT = ' + json.dumps(cfg['endpoint']) + ';',
         'canvas-background.js')
     canvas_js.write_text(canvas_source, encoding='utf-8')
     if (OVERLAY / 'videos').is_dir():
