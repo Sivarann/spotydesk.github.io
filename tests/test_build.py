@@ -49,6 +49,7 @@ const ASSETS = ["./index.html", "./settings-help.js", "./preset-controls.js", ".
             self.assertIn('spotydesk-canvas-v3', (dest / 'sw.js').read_text())
             self.assertIn('canvas-config.json', (dest / 'sw.js').read_text())
             self.assertEqual(json.loads((dest / 'canvas-config.json').read_text())['endpoint'], 'https://canvas.example.org/api/canvas')
+            self.assertIn('const DEFAULT_CANVAS_ENDPOINT = "https://canvas.example.org/api/canvas";', (dest / 'canvas-background.js').read_text())
             self.assertTrue((dest / '.nojekyll').exists())
 
     def test_fails_instead_of_broken_partial_merge(self):
@@ -83,6 +84,7 @@ const ASSETS = ["./index.html", "./settings-help.js", "./preset-controls.js", ".
             self.assertTrue(expected, 'Repository must have a default Canvas API endpoint')
             self.assertEqual(json.loads((root / '_site' / 'canvas-config.json').read_text())['endpoint'], expected)
             self.assertIn('https://spot-omega-sandy.vercel.app', (root / '_site' / 'index.html').read_text())
+            self.assertIn('https://spot-omega-sandy.vercel.app/api/canvas', (root / '_site' / 'canvas-background.js').read_text())
 
     def test_rejects_secret_url(self):
         with tempfile.TemporaryDirectory() as temp:
