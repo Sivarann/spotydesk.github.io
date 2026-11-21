@@ -39,3 +39,7 @@ python3 scripts/build.py ./original-turntable ./_site
 ```
 
 A successful build gives a ready-to-publish `_site/` folder containing the original site plus the add-on. This is also what the included GitHub Actions workflow publishes.
+
+## Live Canvas browser access (Vercel)
+
+The Vercel project `spot` has a production routing rule for `/api/canvas` that adds `Access-Control-Allow-Origin: https://sivarann.github.io` and `Vary: Origin`. The browser origin is just `https://sivarann.github.io` (the `/spotydesk.github.io/` project path is not part of an origin). The SpotyDesk build uses `https://spot-omega-sandy.vercel.app/api/canvas`. If playback remains on artwork, open Turntable Settings → Automatic Spotify Canvas backgrounds for the lookup diagnostic and select Retry Canvas for this song. Browser access headers are not a server authentication or abuse-prevention mechanism; keep the cookie-backed API secure.
