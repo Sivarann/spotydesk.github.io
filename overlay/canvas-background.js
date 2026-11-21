@@ -27,7 +27,7 @@
   let diagnostic = 'Waiting for playback information.';
 
   function setDiagnostic(message) {
-    diagnostic = message;
+    diagnostic = 'Canvas v6: ' + message;
     const status = settingEl?.querySelector('[data-canvas-status]');
     if (status) status.textContent = message;
   }
@@ -69,7 +69,7 @@
     } catch { return ''; }
   }
 
-  const settingsReady = fetch('./canvas-config.json?v=4', { credentials: 'same-origin', cache: 'no-store' })
+  const settingsReady = fetch('./canvas-config.json?v=6', { credentials: 'same-origin', cache: 'no-store' })
     .then(r => r.ok ? r.json() : {})
     .then(data => {
       config = {
@@ -298,7 +298,7 @@
     if (!settingEl) maybeAddSettings();
   }
 
-  window.turntableCanvasBackground = { syncTrack, get configured() { return !!config.endpoint; }, dispose() {
+  window.turntableCanvasBackground = { syncTrack, get version() { return '6'; }, get configured() { return !!config.endpoint; }, dispose() {
     disposed = true;
     requestSerial++;
     abort?.abort();
