@@ -16,7 +16,9 @@ class BuildTests(unittest.TestCase):
         source.mkdir()
         (source / 'index.html').write_text('''<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' https://api.spotify.com; media-src 'self'"></head><body><div id="remote" class="device" data-current-view="player"><div data-panel="player"><div class="player-background"><div class="player-background-shade"></div></div></div><div data-panel="settings"></div></div><p>https://peekabu411.github.io/</p><script src="./bridge.js?v=I.9.8-viewport-resume"></script></body></html>''')
         (source / 'bridge.js').write_text('async function load(file){}\nawait load("./app.js?v=I.9.8-viewport-resume");\n')
-        (source / 'app.js').write_text('''function render(track, playback, remote) {
+        (source / 'app.js').write_text('''const ACTIVE_STATUS_REFRESH_MS = 7_500;
+const IDLE_STATUS_REFRESH_MS = 15_000;
+function render(track, playback, remote) {
   remote.classList.toggle("is-playing", !!playback?.is_playing);
   console.log("all original playback logic remains");
 }''')
@@ -42,14 +44,19 @@ const ASSETS = ["./index.html", "./bridge.js?v=I.9.8-viewport-resume", "./settin
             self.assertEqual((dest / 'LICENSE').read_text(), 'Preserve original author licence here')
             self.assertIn('window.turntableCanvasBackground?.syncTrack(track, !!playback?.is_playing)', (dest / 'app.js').read_text())
             self.assertIn('canvas-background.js', (dest / 'bridge.js').read_text())
-            self.assertIn('bridge.js?v=spotydesk-canvas-v6', (dest / 'index.html').read_text())
-            self.assertIn('bridge.js?v=spotydesk-canvas-v6', (dest / 'sw.js').read_text())
-            self.assertIn('await load("./canvas-background.js?v=6")', (dest / 'bridge.js').read_text())
+            self.assertIn('await load("./app.js?v=spotydesk-fast-sync-v7")', (dest / 'bridge.js').read_text())
+            self.assertIn('app.js?v=spotydesk-fast-sync-v7', (dest / 'sw.js').read_text())
+            self.assertIn('const ACTIVE_STATUS_REFRESH_MS = 3_000;', (dest / 'app.js').read_text())
+            self.assertIn('const IDLE_STATUS_REFRESH_MS = 6_000;', (dest / 'app.js').read_text())
+            self.assertNotIn('const ACTIVE_STATUS_REFRESH_MS = 7_500;', (dest / 'app.js').read_text())
+            self.assertIn('bridge.js?v=spotydesk-fast-sync-v7', (dest / 'index.html').read_text())
+            self.assertIn('bridge.js?v=spotydesk-fast-sync-v7', (dest / 'sw.js').read_text())
+            self.assertIn('await load("./canvas-background.js?v=7")', (dest / 'bridge.js').read_text())
             self.assertIn('https://sivarann.github.io/spotydesk.github.io/', (dest / 'index.html').read_text())
             self.assertNotIn('https://peekabu411.github.io/', (dest / 'index.html').read_text())
             self.assertIn('https://canvas.example.org', (dest / 'index.html').read_text())
             self.assertIn('https://canvaz.scdn.co', (dest / 'index.html').read_text())
-            self.assertIn('spotydesk-canvas-v6', (dest / 'sw.js').read_text())
+            self.assertIn('spotydesk-fast-sync-v7', (dest / 'sw.js').read_text())
             self.assertIn('canvas-config.json', (dest / 'sw.js').read_text())
             self.assertEqual(json.loads((dest / 'canvas-config.json').read_text())['endpoint'], 'https://canvas.example.org/api/canvas')
             self.assertIn('const DEFAULT_CANVAS_ENDPOINT = "https://canvas.example.org/api/canvas";', (dest / 'canvas-background.js').read_text())
