@@ -112,10 +112,17 @@ def build(src: Path, dst: Path):
     index = dst / 'index.html'
     html_text = index.read_text(encoding='utf-8')
     if 'canvas-background.css' not in html_text:
-        html_text = replace_once(html_text, r'</head>', '<link rel="stylesheet" href="./canvas-background.css?v=5">\n</head>', 'index.html', flags=re.I)
+        html_text = replace_once(html_text, r'</head>', '<link rel="stylesheet" href="./canvas-background.css?v=6">\n</head>', 'index.html', flags=re.I)
     # Redirect instructions and hardcoded redirect URLs must point at this fork's domain.
     html_text = html_text.replace(UPSTREAM_ADDRESS, USER_ADDRESS)
     html_text = extend_csp(html_text, api_origin)
+    # The upstream bridge URL never changed between Canvas releases.
+    # Version it here to avoid old Android scripts despite the updated PWA.
+    html_text = replace_once(
+        html_text,
+        r'(<script\s+src="\./bridge\.js)(?:\?[^"]*)?("\s*></script>)',
+        lambda m: m.group(1) + '?v=spotydesk-canvas-v6' + m.group(2),
+        'index.html')
     index.write_text(html_text, encoding='utf-8')
 
     # Both upstream manifests must stay scoped to this GitHub Pages project URL.
@@ -141,7 +148,7 @@ def build(src: Path, dst: Path):
     if 'canvas-background.js' not in js:
         js = replace_once(js,
             r'await\s+load\(\s*["\']\./app\.js(?:\?[^"\']*)?["\']\s*\)\s*;',
-            lambda m: 'await load("./canvas-background.js?v=5");\n' + m.group(0),
+            lambda m: 'await load("./canvas-background.js?v=6");\n' + m.group(0),
             'bridge.js')
     bridge.write_text(js, encoding='utf-8')
 
@@ -159,13 +166,14 @@ def build(src: Path, dst: Path):
     sw = dst / 'sw.js'
     if sw.exists():
         text = sw.read_text(encoding='utf-8')
+        text = text.replace('./bridge.js?v=I.9.8-viewport-resume', './bridge.js?v=spotydesk-canvas-v6')
         if 'canvas-background.js' not in text:
             text = replace_once(text,
                 r'(["\']\./manifest\.webmanifest["\'])',
                 lambda m: m.group(1) + ',\n  "./canvas-background.js", "./canvas-background.css", "./canvas-config.json", "./video-loops.json"',
                 'sw.js')
         text = re.sub(r'(?m)(\bconst\s+CACHE\s*=\s*)(["\'])(.*?)(["\'])\s*;',
-                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-canvas-v5{m.group(2)};',
+                      lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}-spotydesk-canvas-v6{m.group(2)};',
                       text, count=1)
         sw.write_text(text, encoding='utf-8')
 
