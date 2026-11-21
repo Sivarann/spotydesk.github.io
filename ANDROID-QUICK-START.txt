@@ -1,0 +1,15 @@
+SPOTYDESK: COMPLETE ORIGINAL TURNTABLE + CANVAS VIDEO BACKGROUNDS
+
+1. Download and extract this ZIP on your Android phone.
+2. Open GitHub as the spotydesk account. Create repository spotydesk.github.io if needed.
+3. Upload the CONTENTS of this ZIP (including .github folder) into the main branch.
+4. Repository > Settings > Pages > Source: GitHub Actions.
+5. Repository > Actions > "Deploy original Turntable + SpotyDesk Canvas overlay" > Run workflow.
+6. The build will attempt to download ALL Peekabu411 Turntable files and publish them at https://spotydesk.github.io/.
+7. If the build says original repository cannot be cloned, you must obtain the original files you are licensed to use and upload them in an original-turntable folder. This ZIP does not contain those files.
+8. Connect Spotify using your own developer Client ID, with redirect https://spotydesk.github.io/.
+9. For automatic Canvas video retrieval, you need a separately hosted, CORS-enabled Paxsenix0-compatible API. Put its public HTTPS /api/canvas address into the repository Actions variable CANVAS_API_URL, then rerun the workflow. Never upload your Spotify sp_dc cookie or any Client Secret.
+
+The original Turntable behaviour remains unchanged if the API is not configured or cannot provide a video.
+
+Read README.md for full instructions, limitations, licence notes and troubleshooting.

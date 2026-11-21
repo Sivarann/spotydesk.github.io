@@ -1,0 +1,5 @@
+{
+  "endpoint": "",
+  "enabled": true,
+  "timeoutMs": 8000
+}

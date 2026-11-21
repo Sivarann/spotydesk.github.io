@@ -1,0 +1,41 @@
+/* SpotyDesk extension for Peekabu411 Turntable. No original controls replaced. */
+.player-background > .spotydesk-canvas-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+  transition: opacity .42s ease;
+}
+.device[data-spotydesk-canvas="active"] .player-background > .spotydesk-canvas-video,
+#remote[data-spotydesk-canvas="active"] .player-background > .spotydesk-canvas-video {
+  opacity: 1;
+}
+.player-background > .player-background-shade {
+  position: absolute;
+  z-index: 2;
+}
+.device[data-spotydesk-canvas="active"] .player-background > .player-background-shade,
+#remote[data-spotydesk-canvas="active"] .player-background > .player-background-shade {
+  background: linear-gradient(90deg, rgba(0,0,0,.20), rgba(0,0,0,.58) 95%), linear-gradient(0deg, rgba(0,0,0,.56), transparent 75%);
+}
+.spotydesk-canvas-settings {
+  box-sizing: border-box;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 12px;
+  color: inherit;
+  background: rgba(14,17,17,.30);
+  font-size: 13px;
+}
+.spotydesk-canvas-settings label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.spotydesk-canvas-settings p { margin: 6px 0 0; opacity: .75; line-height: 1.45; }
+@media (prefers-reduced-motion: reduce) {
+  .player-background > .spotydesk-canvas-video { transition: none; }
+}
