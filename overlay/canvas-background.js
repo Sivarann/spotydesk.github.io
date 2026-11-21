@@ -5,11 +5,15 @@
  */
 (() => {
   'use strict';
+  if (window.turntableCanvasBackground) return;
 
   const LOCAL_PREFERENCE = 'spotydesk.canvas.enabled.v1';
   let root = null;
   let video = null;
-  let config = { endpoint: '', enabled: true, timeoutMs: 8000 };
+  // Public API URL is embedded in the deployed script as a fallback when
+  // Android serves an outdated or unavailable canvas-config.json.
+  const DEFAULT_CANVAS_ENDPOINT = 'https://spot-omega-sandy.vercel.app/api/canvas';
+  let config = { endpoint: DEFAULT_CANVAS_ENDPOINT, enabled: true, timeoutMs: 8000 };
   let activeUri = '';
   let currentTrack = null;
   let currentPlaying = false;
@@ -65,18 +69,22 @@
     } catch { return ''; }
   }
 
-  const settingsReady = fetch('./canvas-config.json', { credentials: 'same-origin' })
+  const settingsReady = fetch('./canvas-config.json?v=4', { credentials: 'same-origin', cache: 'no-store' })
     .then(r => r.ok ? r.json() : {})
     .then(data => {
       config = {
-        endpoint: safeEndpoint(data?.endpoint),
+        endpoint: safeEndpoint(data?.endpoint) || safeEndpoint(DEFAULT_CANVAS_ENDPOINT),
         enabled: data?.enabled !== false,
         timeoutMs: Math.max(2000, Math.min(12000, Number(data?.timeoutMs) || 8000))
       };
       updateSettings();
       return config;
     })
-    .catch(() => config);
+    .catch(() => {
+      config.endpoint = safeEndpoint(DEFAULT_CANVAS_ENDPOINT);
+      updateSettings();
+      return config;
+    });
 
   const mappingReady = fetch('./video-loops.json', { credentials: 'same-origin' })
     .then(r => r.ok ? r.json() : {})
@@ -146,7 +154,11 @@
     settingEl.className = 'spotydesk-canvas-settings';
     settingEl.innerHTML = '<label><input type="checkbox" checked> Automatic Spotify Canvas backgrounds</label><p data-canvas-status role="status" aria-live="polite"></p><button type="button" data-canvas-retry>Retry Canvas for this song</button>';
     settingEl.querySelector('[data-canvas-retry]').addEventListener('click', () => {
+      // Retry expresses intent to enable Canvas, including a previously saved off switch.
+      localStorage.setItem(LOCAL_PREFERENCE, 'true');
+      updateSettings();
       if (activeUri) cached.delete(activeUri);
+      setDiagnostic('Retrying Canvas lookup with the configured API...');
       void syncTrack(currentTrack, currentPlaying, true);
     });
     settingEl.querySelector('input').addEventListener('change', e => {
@@ -182,8 +194,16 @@
 
   async function getCanvas(uri, token) {
     await settingsReady;
-    if (!config.enabled || !config.endpoint || !prefEnabled()) {
-      setDiagnostic('Canvas is disabled or no API URL is configured.');
+    if (!prefEnabled()) {
+      setDiagnostic('Canvas is off in Settings. Turn it on, or tap Retry Canvas to enable it.');
+      return '';
+    }
+    if (!config.enabled) {
+      setDiagnostic('Canvas is disabled in the configuration file.');
+      return '';
+    }
+    if (!config.endpoint) {
+      setDiagnostic('Canvas API endpoint is missing in this app version.');
       return '';
     }
     if (cached.has(uri)) {
