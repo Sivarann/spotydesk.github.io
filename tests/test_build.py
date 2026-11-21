@@ -42,7 +42,7 @@ const ASSETS = ["./index.html", "./settings-help.js", "./preset-controls.js", ".
             self.assertEqual((dest / 'LICENSE').read_text(), 'Preserve original author licence here')
             self.assertIn('window.turntableCanvasBackground?.syncTrack(track, !!playback?.is_playing)', (dest / 'app.js').read_text())
             self.assertIn('canvas-background.js', (dest / 'bridge.js').read_text())
-            self.assertIn('https://spotydesk.github.io/', (dest / 'index.html').read_text())
+            self.assertIn('https://sivarann.github.io/spotydesk.github.io/', (dest / 'index.html').read_text())
             self.assertNotIn('https://peekabu411.github.io/', (dest / 'index.html').read_text())
             self.assertIn('https://canvas.example.org', (dest / 'index.html').read_text())
             self.assertIn('https://canvaz.scdn.co', (dest / 'index.html').read_text())
