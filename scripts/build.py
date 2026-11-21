@@ -163,8 +163,11 @@ def build(src: Path, dst: Path):
             lambda m: m.group(0) + '\n' + m.group('indent') + 'window.turntableCanvasBackground?.syncTrack(track, !!playback?.is_playing);',
             'app.js')
     # Faster foreground polling for songs skipped on another Spotify device.
-    # The upstream 429 cooldown logic remains intact.
-    js = replace_once(js, r'(?m)^const ACTIVE_STATUS_REFRESH_MS = 7_500;
+    # The upstream Spotify 429 cooldown logic remains intact.
+    js = replace_once(js, r"(?m)^const ACTIVE_STATUS_REFRESH_MS = 7_500;$",
+                      "const ACTIVE_STATUS_REFRESH_MS = 3_000;", "app.js")
+    js = replace_once(js, r"(?m)^const IDLE_STATUS_REFRESH_MS = 15_000;$",
+                      "const IDLE_STATUS_REFRESH_MS = 6_000;", "app.js")
     js = js.replace(UPSTREAM_ADDRESS, USER_ADDRESS)
     app.write_text(js, encoding='utf-8')
 
